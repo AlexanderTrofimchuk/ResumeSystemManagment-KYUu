@@ -1,0 +1,16 @@
+.login-app-title   { font-size: clamp(1.6rem,  4vw,   3rem); }
+.login-heading     { font-size: clamp(1.25rem, 2vw, 1.75rem); }
+.login-form        { font-size: 1rem; }
+.login-input       { font-size: 1rem !important; }
+.login-forgot      { font-size: 0.875rem; }
+.login-btn-submit  { font-size: 1rem; }
+.login-footer-text { font-size: 0.875rem; }
+
+.login-center {
+    min-height: calc(100vh - 56px);
+}
+
+.login-form-box {
+    width: 100%;
+    max-width: 320px;
+}

@@ -1,0 +1,293 @@
+@using Microsoft.AspNetCore.Mvc.Localization
+@model ResumeSystemManagement.Application.DTOs.Attributes.AttributeDetails
+@inject IViewLocalizer Localizer
+@{
+    ViewData["Title"] = Localizer["PageTitle"];
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/responsive.attribute-library.css" asp-append-version="true"/>
+}
+
+<div class="container mx-auto justify-content-center align-items-center mt-2 robot-mono-font um-container attribute-library-page">
+
+    <div class="toolbar d-flex align-items-center gap-2 p-2 mb-3 border rounded bg-light shadow-sm um-toolbar">
+
+        <form asp-controller="AttributeLibrary"
+              asp-action="SearchAttribute"
+              method="get"
+              class="d-flex gap-2 flex-grow-1">
+
+            <input type="text"
+                   name="name"
+                   class="form-control form-control-sm"
+                   placeholder="@Localizer["SearchPlaceholder"]"
+                   aria-label="@Localizer["SearchAttributes"]"
+                   value="@ViewContext.HttpContext.Request.Query["name"]">
+
+            <button type="submit"
+                    class="btn btn-outline-secondary btn-sm flex-shrink-0"
+                    title="@Localizer["Search"]"
+                    aria-label="@Localizer["Search"]">
+                <i class="bi bi-search"></i>
+            </button>
+
+        </form>
+
+        <button
+            id="btnCreate"
+            class="btn btn-outline-primary btn-sm"
+            title="@Localizer["CreateAttribute"]"
+            aria-label="@Localizer["CreateAttribute"]"
+            data-bs-toggle="modal"
+            data-bs-target="#createAttributeModal">
+            <span class="btn-text"><i class="bi bi-plus-square-fill" aria-hidden="true"></i></span>
+        </button>
+
+        <button
+            id="btnEdit"
+            class="btn btn-outline-secondary btn-sm"
+            disabled
+            title="@Localizer["EditAttribute"]"
+            aria-label="@Localizer["EditAttribute"]">
+            <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+        </button>
+
+        <button asp-action="DeleteAttributes"
+                type="submit"
+                form="mainForm"
+                id="btnDelete"
+                class="btn btn-danger btn-sm"
+                disabled
+                title="@Localizer["DeleteAttributes"]"
+                aria-label="@Localizer["DeleteAttributes"]">
+            <i class="bi bi-dash-square-fill" aria-hidden="true"></i>
+        </button>
+
+    </div>
+
+    <form method="post" id="mainForm">
+        <div class="um-table-wrapper">
+            <div class="table-responsive um-scroll-area">
+                <table class="table table-striped-columns um-table text-center">
+                    <thead>
+                    <tr>
+                        <th scope="col">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="selectAll"
+                                   id="selectAll"
+                                   aria-label="@Localizer["SelectAll"]">
+                        </th>
+                        <th scope="col">@Localizer["Title"]</th>
+                        <th scope="col">@Localizer["Description"]</th>
+                        <th scope="col">@Localizer["Type"]</th>
+                        <th scope="col">@Localizer["Category"]</th>
+                    </tr>
+                    </thead>
+
+                    <tbody id="attributeTableBody">
+                    @if (Model.Attributes.Count > 0)
+                    {
+                        @foreach (var item in Model.Attributes)
+                        {
+                            <tr class="attribute-row">
+                                <td>
+                                    <input value="@item.Id"
+                                           name="SelectIds"
+                                           id="checkbox-@item.Id"
+                                           type="checkbox"
+                                           class="form-check-input row-checkbox">
+                                </td>
+                                <td class="attribute-title">@item.Title</td>
+                                <td>@item.Description</td>
+                                <td class="attribute-type">@item.TypeName</td>
+                                <td class="attribute-category">@item.CategoryName</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center">
+                                <p class="h3 my-3">@Localizer["NoAttributesYet"]</p>
+                            </td>
+                        </tr>
+                    }
+
+                    <tr id="noSearchResults" style="display: none;">
+                        <td colspan="5" class="text-center">
+                            <p class="h3 my-3">@Localizer["NoAttributesFound"]</p>
+                        </td>
+                    </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+    @{
+        var attributeSearch = ViewContext.HttpContext.Request.Query["name"].ToString();
+        var attributeAction = string.IsNullOrWhiteSpace(attributeSearch) ? "Index" : "SearchAttribute";
+        var attributeRouteValues = string.IsNullOrWhiteSpace(attributeSearch)
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string> { ["name"] = attributeSearch };
+    }
+    @await Html.PartialAsync("_Pagination", new ResumeSystemManagement.Web.ViewModels.PaginationViewModel
+    {
+        CurrentPage = Model.CurrentPage,
+        TotalPages = Model.TotalPages,
+        TotalCount = Model.TotalCount,
+        Controller = "AttributeLibrary",
+        Action = attributeAction,
+        RouteValues = attributeRouteValues
+    })
+</div>
+
+@await Html.PartialAsync("_CreateAttribute", Model.CreateAttributeDto)
+
+<div id="editModalContainer"></div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+
+    <script>
+    const selectAll     = document.getElementById('selectAll');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+
+    const toolbarBtns = [
+        document.getElementById('btnEdit'),
+        document.getElementById('btnDelete'),
+    ];
+
+    function updateToolbar() {
+        const checked = Array.from(rowCheckboxes).filter(cb => cb.checked);
+        const any = checked.length > 0;
+
+        toolbarBtns.forEach(btn => {
+            if (btn) btn.disabled = !any;
+        });
+
+        const editBtn = document.getElementById('btnEdit');
+        if (editBtn) {
+            editBtn.disabled = checked.length !== 1;
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            rowCheckboxes.forEach(cb => {
+                const row = cb.closest('tr');
+
+                if (row && !row.hidden) {
+                    cb.checked = this.checked;
+                    row.classList.toggle('table-active', this.checked);
+                }
+            });
+
+            updateToolbar();
+        });
+    }
+
+    rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function () {
+            const row = this.closest('tr');
+
+            if (row) {
+                row.classList.toggle('table-active', this.checked);
+            }
+
+            const visibleCheckboxes = Array.from(rowCheckboxes).filter(c => {
+                const checkboxRow = c.closest('tr');
+                return checkboxRow && !checkboxRow.hidden;
+            });
+
+            if (selectAll) {
+                selectAll.checked =
+                    visibleCheckboxes.length > 0 &&
+                    visibleCheckboxes.every(c => c.checked);
+            }
+
+            updateToolbar();
+        });
+    });
+
+    (function () {
+        const form = document.getElementById('createAttributeForm');
+        if (!form) return;
+
+        const summary = form.querySelector('[data-valmsg-summary]');
+        const createModal = document.getElementById('createAttributeModal');
+
+        if (summary &&
+            summary.querySelectorAll('li').length > 0 &&
+            createModal &&
+            window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(createModal).show();
+        }
+    })();
+
+    const editBtn = document.getElementById('btnEdit');
+
+    if (editBtn) {
+        editBtn.addEventListener('click', async () => {
+            const selected = document.querySelector('.row-checkbox:checked');
+
+            if (!selected) {
+                return;
+            }
+
+            const id = selected.value;
+            const response = await fetch(
+                `/AttributeLibrary/EditAttributeForm?id=${encodeURIComponent(id)}`
+            );
+
+            if (!response.ok) {
+                console.error('Failed to load edit form');
+                return;
+            }
+
+            const editModalContainer =
+                document.getElementById('editModalContainer');
+
+            if (!editModalContainer) {
+                return;
+            }
+
+            editModalContainer.innerHTML = await response.text();
+
+            if (typeof initEditForm === 'function') {
+                initEditForm();
+            }
+
+            const editModal =
+                document.getElementById('editAttributeModal');
+
+            if (editModal && window.bootstrap) {
+                bootstrap.Modal.getOrCreateInstance(editModal).show();
+            }
+        });
+    }
+
+    updateToolbar();
+
+    window.addEventListener('pageshow', e => {
+        if (e.persisted) {
+            rowCheckboxes.forEach(cb => {
+                cb.checked = false;
+
+                const row = cb.closest('tr');
+                if (row) {
+                    row.classList.remove('table-active');
+                }
+            });
+
+            if (selectAll) {
+                selectAll.checked = false;
+            }
+
+            updateToolbar();
+        }
+    });
+    </script>
+}

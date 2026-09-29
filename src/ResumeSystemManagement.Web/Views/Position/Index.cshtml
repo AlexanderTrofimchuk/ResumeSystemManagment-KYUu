@@ -1,0 +1,334 @@
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
+
+@using ResumeSystemManagement.Core.ReadModels
+@model ResumeSystemManagement.Application.DTOs.Positions.PositionDetails
+@{
+    ViewData["Title"] = Localizer["PageTitle"];
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/responsive.position.css" asp-append-version="true"/>
+}
+
+<div class="container mx-auto justify-content-center align-items-center mt-2 robot-mono-font um-container position-library-page">
+
+    <div class="toolbar d-flex align-items-center gap-2 p-2 mb-3 border rounded bg-light shadow-sm um-toolbar">
+
+        <form asp-controller="Position"
+              asp-action="SearchPosition"
+              method="get"
+              class="d-flex gap-2 flex-grow-1">
+
+            <input type="text"
+                   name="name"
+                   class="form-control form-control-sm"
+                   placeholder="@Localizer["SearchPlaceholder"]"
+                   aria-label="@Localizer["SearchPositions"]"
+                   value="@Context.Request.Query["name"]">
+
+            <button type="submit"
+                    class="btn btn-outline-secondary btn-sm flex-shrink-0"
+                    title="@Localizer["Search"]"
+                    aria-label="@Localizer["Search"]">
+                <i class="bi bi-search"></i>
+            </button>
+
+        </form>
+        
+        @if (User.IsInRole(RoleNames.Recruiter) || User.IsInRole(RoleNames.Administrator))
+        {
+            <button
+                id="btnCreate"
+                class="btn btn-outline-primary btn-sm"
+                title="@Localizer["CreatePosition"]"
+                aria-label="@Localizer["CreatePosition"]"
+                data-bs-toggle="modal"
+                data-bs-target="#createPositionModal">
+                <span class="btn-text"><i class="bi bi-plus-square-fill" aria-hidden="true"></i></span>
+            </button>
+            
+            <button asp-action="DuplicatePosition"
+                    type="submit"
+                    form="mainForm"
+                    id="btnDuplicate"
+                    class="btn btn-outline-warning btn-sm"
+                    disabled
+                    title="@Localizer["DuplicatePosition"]"
+                    aria-label="@Localizer["DuplicatePosition"]">
+                <i class="bi bi-copy" aria-hidden="true"></i>
+            </button>
+            
+            <button
+                id="btnEdit"
+                class="btn btn-outline-secondary btn-sm"
+                disabled
+                title="@Localizer["EditPosition"]"
+                aria-label="@Localizer["EditPosition"]">
+                <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+            </button>
+            
+            <button asp-controller="Position"
+                    asp-action="RenderTemplate"
+                    type="submit"
+                    form="mainForm"
+                    id="btnTemplate"
+                    class="btn btn-outline-info btn-sm"
+                    disabled
+                    title="@Localizer["OpenTemplate"]"
+                    aria-label="@Localizer["OpenTemplate"]">
+                <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+            </button>
+
+            <button asp-action="DeletePositions"
+                    type="submit"
+                    form="mainForm"
+                    id="btnDelete"
+                    class="btn btn-outline-danger btn-sm"
+                    disabled
+                    title="@Localizer["DeletePositions"]"
+                    aria-label="@Localizer["DeletePositions"]">
+                <i class="bi bi-dash-square-fill" aria-hidden="true"></i>
+            </button>
+        }
+
+    </div>
+
+    <form method="post" id="mainForm">
+        <div class="um-table-wrapper">
+            <div class="table-responsive um-scroll-area">
+                <table class="table table-striped-columns um-table text-center">
+                    <thead>
+                    <tr>
+                        <th scope="col">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="selectAll"
+                                   id="selectAll"
+                                   aria-label="@Localizer["SelectAll"]">
+                        </th>
+                        <th scope="col">@Localizer["Title"]</th>
+                        <th scope="col">@Localizer["ShortDescription"]</th>
+                        <th scope="col">@Localizer["Level"]</th>
+                        <th scope="col">@Localizer["Permissions"]</th>
+                        <th scope="col">@Localizer["PublishStatus"]</th>
+                        <th scope="col">@Localizer["MaxProjects"]</th>
+                        <th scope="col">@Localizer["CreatedOn"]</th>
+                        <th scope="col">@Localizer["ClosedOn"]</th>
+                    </tr>
+                    </thead>
+
+                    <tbody id="positionTableBody">
+                    @if (Model.Positions.Count > 0)
+                    {
+                        @foreach (var item in Model.Positions)
+                        {
+                            <tr class="position-row">
+                                <td>
+                                    <input value="@item.Id"
+                                           name="SelectIds"
+                                           id="checkbox-@item.Id"
+                                           type="checkbox"
+                                           class="form-check-input row-checkbox">
+                                </td>
+
+                                <td class="position-title">
+                                    <a asp-action="GetPositionDetail" asp-controller="Position" asp-route-positionId=@item.Id>@item.Title</a>
+                                </td>
+                                <td>@item.Description</td>
+                                <td>@Localizer[$"PositionLevel_{item.Level}"]</td>
+                                <td class="position-permissions">@Localizer[$"PositionPermission_{item.Permissions}"]</td>
+                                <td>@Localizer[$"PublishStatus_{item.Status}"]</td>
+                                <td>@item.MaxProjects</td>
+                                <td>@item.CreatedOn.ToString("yyyy-MM-dd")</td>
+                                <td>@item.ClosedAt?.ToString("yyyy-MM-dd")</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center">
+                                <p class="h3 my-3">@Localizer["NoPositions"]</p>
+                            </td>
+                        </tr>
+                    }
+
+                    <tr id="noSearchResults" style="display: none;">
+                        <td colspan="9" class="text-center">
+                            <p class="h3 my-3">@Localizer["NoPositionsFound"]</p>
+                        </td>
+                    </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+
+    @{
+        var positionRouteValues = new Dictionary<string, string>();
+        var positionSearch = ViewContext.HttpContext.Request.Query["name"].ToString();
+        var positionAction = string.IsNullOrWhiteSpace(positionSearch) ? "Index" : "SearchPosition";
+        if (!string.IsNullOrWhiteSpace(positionSearch))
+        {
+            positionRouteValues["name"] = positionSearch;
+        }
+    }
+    @await Html.PartialAsync("_Pagination", new ResumeSystemManagement.Web.ViewModels.PaginationViewModel
+    {
+        CurrentPage = Model.CurrentPage,
+        TotalPages = Model.TotalPages,
+        TotalCount = Model.TotalCount,
+        Controller = "Position",
+        Action = positionAction,
+        RouteValues = positionRouteValues
+    })
+</div>
+
+@await Html.PartialAsync("_CreatePosition", Model.CreatePositionDto)
+
+<div id="editModalContainer"></div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); } 
+
+    <script>
+    const selectAll = document.getElementById('selectAll');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+
+    const toolbarBtns = [
+        document.getElementById('btnEdit'),
+        document.getElementById('btnDuplicate'),
+        document.getElementById('btnDelete'),
+        document.getElementById('btnTemplate')
+    ].filter(Boolean);
+
+    function updateToolbar() {
+        const checked = Array.from(rowCheckboxes).filter(cb => cb.checked);
+        const any = checked.length > 0;
+
+        toolbarBtns.forEach(btn => {
+            btn.disabled = !any;
+        });
+
+        const editBtn = document.getElementById('btnEdit');
+        const duplicateBtn = document.getElementById('btnDuplicate');
+        const templateBtn = document.getElementById('btnTemplate');
+
+        if (editBtn) {
+            editBtn.disabled = checked.length !== 1;
+        }
+
+        if (duplicateBtn) {
+            duplicateBtn.disabled = checked.length !== 1;
+        }
+
+        if (templateBtn) {
+            templateBtn.disabled = checked.length !== 1;
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            rowCheckboxes.forEach(cb => {
+                const row = cb.closest('tr');
+
+                if (row && !row.hidden) {
+                    cb.checked = this.checked;
+                    row.classList.toggle('table-active', this.checked);
+                }
+            });
+
+            updateToolbar();
+        });
+    }
+
+    rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function () {
+            const row = this.closest('tr');
+
+            if (row) {
+                row.classList.toggle('table-active', this.checked);
+            }
+
+            const visibleCheckboxes = Array.from(rowCheckboxes).filter(c => {
+                const checkboxRow = c.closest('tr');
+                return checkboxRow && !checkboxRow.hidden;
+            });
+
+            if (selectAll) {
+                selectAll.checked =
+                    visibleCheckboxes.length > 0 &&
+                    visibleCheckboxes.every(c => c.checked);
+            }
+
+            updateToolbar();
+        });
+    });
+
+    window.addEventListener('pageshow', e => {
+        if (e.persisted) {
+            rowCheckboxes.forEach(cb => {
+                cb.checked = false;
+                const row = cb.closest('tr');
+                if (row) {
+                    row.classList.remove('table-active');
+                }
+            });
+
+            if (selectAll) {
+                selectAll.checked = false;
+            }
+
+            updateToolbar();
+        }
+    });
+
+    const editBtn = document.getElementById('btnEdit');
+
+    if (editBtn) {
+        editBtn.addEventListener('click', async () => {
+            const selected = document.querySelector('.row-checkbox:checked');
+
+            if (!selected) {
+                return;
+            }
+
+            const id = selected.value;
+            const response = await fetch(
+                `/Position/EditPositionForm?id=${encodeURIComponent(id)}`
+            );
+
+            if (!response.ok) {
+                console.error('Failed to load edit form');
+                return;
+            }
+
+            const editModalContainer =
+                document.getElementById('editModalContainer');
+
+            if (!editModalContainer) {
+                return;
+            }
+
+            editModalContainer.innerHTML = await response.text();
+
+            const form = document.getElementById('editPositionForm');
+
+            if (form && window.$ && $.validator && $.validator.unobtrusive) {
+                $.validator.unobtrusive.parse(form);
+            }
+
+            const editModal =
+                document.getElementById('editPositionModal');
+
+            if (editModal && window.bootstrap) {
+                bootstrap.Modal.getOrCreateInstance(editModal).show();
+            }
+        });
+    }
+
+    updateToolbar();
+    </script>
+}

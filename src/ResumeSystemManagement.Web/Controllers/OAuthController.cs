@@ -1,0 +1,58 @@
+﻿using System.Security.Claims;
+using FluentResults;
+using Microsoft.AspNetCore.Mvc;
+using ResumeSystemManagement.Application.Interfaces.Login;
+using ResumeSystemManagement.Infrastructure.Interfaces;
+using ResumeSystemManagement.Web.ViewModels.Enums;
+
+namespace ResumeSystemManagement.Web.Controllers;
+
+public class OAuthController(IExternalLoginService loginService, IExternalAuthProvider externalProvider): BaseController
+{
+    private readonly IExternalAuthProvider _externalProvider = externalProvider;
+    private readonly IExternalLoginService _loginService = loginService;
+    
+    [HttpGet]
+    public IActionResult GoogleLogin()
+    {
+        var properties = _externalProvider.ConfigureGoogleLogin(Url.Action("GoogleCallback"));
+        return Challenge(properties, "Google");
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> GoogleCallback()
+    {
+        return await ExternalCallback(
+            _externalProvider.GetGooglePrincipal,
+            _loginService.Login,
+            "Google");
+    }
+    
+    [HttpGet]
+    public IActionResult FacebookLogin()
+    {
+        var properties = _externalProvider.ConfigureFacebookLogin(Url.Action("FacebookCallback"));
+        return Challenge(properties, "Facebook");
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> FacebookCallback()
+    {
+        return await ExternalCallback(
+            _externalProvider.GetFacebookPrincipal,
+            _loginService.Login,
+            "Facebook");
+    }
+    
+    private async Task<IActionResult> ExternalCallback
+        (Func<Task<ClaimsPrincipal?>> principalAction,Func<ClaimsPrincipal,string, Task<Result>> login, string provider)
+    {
+        var principal = await principalAction();
+        if (principal is null) return RedirectWithMessage(["Access is denied"], 
+                MessageColor.Danger,ActionName.LoginPage, ControllerName.Account);
+        var result = await login(principal, provider);
+        if (result.IsFailed) return RedirectWithMessage(GetErrorsMessage(result),
+                MessageColor.Danger, ActionName.LoginPage, ControllerName.Account);
+        return RedirectToAction(nameof(ActionName.Index), nameof(ControllerName.Home));
+    }
+}

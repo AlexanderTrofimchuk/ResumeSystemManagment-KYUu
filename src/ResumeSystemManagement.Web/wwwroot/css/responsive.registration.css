@@ -1,0 +1,20 @@
+.reg-app-title   { font-size: clamp(1.6rem,  4vw,   3rem); }
+.reg-heading     { font-size: clamp(1.25rem, 2vw, 1.75rem); }
+.reg-form        { font-size: 1rem; }
+.reg-input       { font-size: 1rem !important; }
+.reg-btn-submit  { font-size: 1rem; }
+.reg-footer-text { font-size: 0.875rem; }
+
+.reg-center {
+    min-height: calc(100vh - 56px);
+}
+
+.reg-left {
+    padding: clamp(1rem, 4vw, 3rem);
+    padding-top: clamp(4.5rem, 8vh, 6rem);
+}
+
+.reg-form-box {
+    width: 100%;
+    max-width: 360px;
+}

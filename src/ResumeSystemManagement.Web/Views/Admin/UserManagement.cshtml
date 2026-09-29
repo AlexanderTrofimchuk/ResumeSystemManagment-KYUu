@@ -1,0 +1,217 @@
+@model ResumeSystemManagement.Application.DTOs.User.UserDetails
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
+@{
+    ViewData["Title"] = Localizer["PageTitle"];
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/responsive.admin.css" asp-append-version="true"/>
+}
+
+<div class="container mx-auto justify-content-center align-items-center mt-2 robot-mono-font um-container admin-user-management">
+    <div class="toolbar d-flex align-items-center gap-2 p-2 mb-3 border rounded bg-light shadow-sm um-toolbar">
+
+        <button type="button"
+                id="btnChange"
+                class="btn btn-primary btn-sm" disabled
+                title="@Localizer["ChangeRole"]"
+                aria-label="@Localizer["ChangeRole"]"
+                data-bs-toggle="modal"
+                data-bs-target="#changeRoleModal">
+            <i class="bi bi-person-gear" aria-hidden="true"></i>
+        </button>
+
+        <button asp-action="BlockUsers" asp-controller="Admin"
+                form="mainForm"
+                id="btnBlock"
+                class="btn btn-outline-danger btn-sm" disabled
+                title="@Localizer["BlockSelectedUser"]"
+                aria-label="@Localizer["BlockSelectedUser"]">
+            <i class="bi bi-slash-circle" aria-hidden="true"></i>
+        </button>
+
+        <button asp-action="UnBlockUsers" asp-controller="Admin"
+                form="mainForm"
+                id="btnUnblock"
+                class="btn btn-success btn-sm" disabled
+                title="@Localizer["UnblockSelectedUser"]"
+                aria-label="@Localizer["UnblockSelectedUser"]">
+            <i class="bi bi-unlock" aria-hidden="true"></i>
+        </button>
+
+        <button type="submit" asp-action="DeleteUsers" asp-controller="Admin"
+                form="mainForm"
+                id="btnDelete"
+                class="btn btn-danger btn-sm" disabled
+                title="@Localizer["DeleteSelectedUser"]"
+                aria-label="@Localizer["DeleteSelectedUser"]">
+            <i class="bi bi-trash" aria-hidden="true"></i>
+        </button>
+
+    </div>
+
+    <form method="post" id="mainForm">
+        <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+        <input type="hidden" name="PageSize" value="@Model.PageSize" />
+        <div class="um-table-wrapper">
+            <div class="table-responsive um-scroll-area">
+                <table class="table table-striped-columns um-table text-center">
+                    <thead>
+                    <tr>
+                        <th scope="col">
+                            <input class="form-check-input" type="checkbox" name="selectAll" id="selectAll" aria-label="@Localizer["SelectAll"]">
+                        </th>
+                        <th scope="col">@Localizer["Name"]</th>
+                        <th scope="col">@Localizer["Email"]</th>
+                        <th scope="col">@Localizer["Blocked"]</th>
+                        <th scope="col">@Localizer["Role"]</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @if (Model.UserInfos.Count > 0)
+                    {
+                        @foreach (var user in Model.UserInfos)
+                        {
+                            <tr>
+                                <td>
+                                    <input value="@user.Id"
+                                           name="SelectIds"
+                                           id="checkbox-@user.Id"
+                                           type="checkbox"
+                                           class="form-check-input row-checkbox">
+                                </td>
+                                <td>@user.FullName</td>
+                                <td>@user.Email</td>
+                                <td>
+                                    <input checked="@user.IsBlocked"
+                                           id="blocked-checkbox-@user.Id"
+                                           type="checkbox"
+                                           class="form-check-input"
+                                           disabled>
+                                </td>
+                                <td>@user.Role</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center">
+                                <p class="h3 my-3">@Localizer["NoUsersFound"]</p>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+
+    @await Html.PartialAsync("_ChangeRoleModal", ResumeSystemManagement.Core.ReadModels.RoleNames.Roles)
+
+    @await Html.PartialAsync("_Pagination", new ResumeSystemManagement.Web.ViewModels.PaginationViewModel
+    {
+        CurrentPage = Model.CurrentPage,
+        TotalPages = Model.TotalPages,
+        TotalCount = Model.TotalCount,
+        Controller = "Admin",
+        Action = "UserManagement",
+        PageParameterName = "pageNumber",
+        RouteValues = new Dictionary<string, string> { ["pageSize"] = Model.PageSize.ToString() }
+    })
+</div>
+
+<script>
+(function () {
+    const selectAll = document.getElementById('selectAll');
+    const rowCheckboxes = Array.from(document.querySelectorAll('.row-checkbox'));
+
+    const toolbarButtons = [
+        document.getElementById('btnChange'),
+        document.getElementById('btnBlock'),
+        document.getElementById('btnUnblock'),
+        document.getElementById('btnDelete')
+    ].filter(Boolean);
+
+    function updateToolbarState() {
+        const checked = rowCheckboxes.filter(cb => cb.checked);
+        const anyChecked = checked.length > 0;
+
+        toolbarButtons.forEach(btn => {
+            btn.disabled = !anyChecked;
+        });
+
+        const changeButton = document.getElementById('btnChange');
+        if (changeButton) {
+            changeButton.disabled = checked.length !== 1;
+        }
+    }
+
+    function updateSelectAllState() {
+        if (!selectAll) {
+            return;
+        }
+
+        selectAll.checked =
+            rowCheckboxes.length > 0 &&
+            rowCheckboxes.every(cb => cb.checked);
+
+        selectAll.indeterminate =
+            rowCheckboxes.some(cb => cb.checked) &&
+            !selectAll.checked;
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            rowCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+
+                const row = cb.closest('tr');
+                if (row) {
+                    row.classList.toggle('table-active', this.checked);
+                }
+            });
+
+            selectAll.indeterminate = false;
+            updateToolbarState();
+        });
+    }
+
+    rowCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function () {
+            const row = this.closest('tr');
+
+            if (row) {
+                row.classList.toggle('table-active', this.checked);
+            }
+
+            updateSelectAllState();
+            updateToolbarState();
+        });
+    });
+
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) {
+            rowCheckboxes.forEach(cb => {
+                cb.checked = false;
+
+                const row = cb.closest('tr');
+                if (row) {
+                    row.classList.remove('table-active');
+                }
+            });
+
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+
+            updateToolbarState();
+        }
+    });
+
+    updateSelectAllState();
+    updateToolbarState();
+})();
+</script>

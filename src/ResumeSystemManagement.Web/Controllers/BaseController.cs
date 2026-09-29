@@ -1,0 +1,30 @@
+﻿using System.Text.Json;
+using FluentResults;
+using Microsoft.AspNetCore.Mvc;
+using ResumeSystemManagement.Web.ViewModels.Enums;
+
+namespace ResumeSystemManagement.Web.Controllers;
+
+public class BaseController: Controller
+{
+    public IActionResult RedirectWithMessage(List<string> messages, MessageColor color, ActionName action, 
+        ControllerName controller, object? router = null)
+    {
+        TempData["ToastMessages"] = JsonSerializer.Serialize(messages);
+        TempData["ToastType"] = color.ToString().ToLower();
+        return RedirectToAction(action.ToString(), controller.ToString(),  router);
+    }
+
+    public IActionResult ReturnCurrentException(List<string> messages, ActionName action, object? model = null)
+    {
+        TempData["ToastMessages"] = JsonSerializer.Serialize(messages);
+        TempData["ToastType"] = nameof(MessageColor.Danger).ToLower();
+        
+        if (model is null)
+            return RedirectToAction(action.ToString());
+        
+        return View(action.ToString(), model);
+    }
+
+    public List<string> GetErrorsMessage(Result result) => result.Errors.Select(e => e.Message).ToList();
+}
